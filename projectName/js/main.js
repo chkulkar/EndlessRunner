@@ -1,8 +1,12 @@
+//Team Name: Area 53
+//Team Members: Cheryl Kulkarni, Galen Turoci, Hongyu Chen
+//Group 53
+//GitHub Repository: https://github.com/chkulkar/EndlessRunner
 'use strict';
-
 // define game and game variables
-var game = new Phaser.Game(1000, 400, Phaser.AUTO, 'phaser');
+var game = new Phaser.Game(1400, 400, Phaser.AUTO, 'phaser');
 var scoreText;
+var levelCounter;
 var platforms;
 var player;
 var enemy;
@@ -18,7 +22,8 @@ var posDropSound;
 var negDropSound;
 var enemySound;
 var backSound;
-var time=0;
+var level=0;
+var background;
 // define MainMenu state and methods
 var MainMenu = function(game) {};
 MainMenu.prototype = {
@@ -48,7 +53,7 @@ MainMenu.prototype = {
 	create: function() {
 		// set bg color to blue
 		game.stage.backgroundColor = '#4488AA';
-		printMessages('Dog Run!', 'Use UP key to jump! Collect treats and avoid obstacles.','Press [Space] to begin');
+		printMessages('Dog Chase!', 'Use UP key to jump! Collect treats and avoid obstacles.','Press [Space] to begin');
 
 	},
 	update: function() {
@@ -66,13 +71,20 @@ Play.prototype = {
 		// get score & life from previous state
 		this.score = scr;
 		this.life = life;
-
 	},
 	create: function() {
+		//setup level up counter
+		levelCounter = game.time.create(false);
+		levelCounter.loop(1000, levelBump, this); 
+		levelCounter.start();	
+
 		//enable Arcade Physics system
 		game.physics.startSystem(Phaser.Physics.ARCADE);
+
 		//add game background and sounds
-		game.add.sprite(0,0,'sky');
+		background = game.add.sprite(0,0,'sky');
+		background.scale.setTo(2,2);
+
 		collectSound = game.add.audio('collectible');
 		collideObstacleSound = game.add.audio('collideObstacleSound');
 		posDropSound = game.add.audio('posDropSound');
@@ -88,13 +100,13 @@ Play.prototype = {
 
 		//create ground
 		var ground = platforms.create(0, game.world.height-60, 'ground');
-		ground.scale.setTo(2, 2); //scale ground
+		ground.scale.setTo(3, 2); //scale ground
 		ground.body.immovable = true; //prevent ground from moving
 		
 		//create enemies at different locations and enable physics
 		enemy = game.add.sprite(350, game.height-177, 'atlas1', 'walk1');
 		game.physics.arcade.enable(enemy);
-		enemy.body.collideWorldBounds = true; 
+		enemy.body.collideWorldBounds = false; 
 		enemy.animations.add('walk',['walk1', 'walk2'], 5, true); //create enemy left movement
 
 		//create player
@@ -154,14 +166,23 @@ Play.prototype = {
 		//check for player overlap with treat
 		game.physics.arcade.overlap(player, treats, collectTreat, null, this);
 
-		//check for player collision with enemy
-		game.physics.arcade.overlap(player, enemy, hitEnemy, null, this);
-
 		//check for obstacle collision with treat
 		game.physics.arcade.overlap(obstacles, treats, obstacleHittreat, null, this);
 
+		//go to game over screen if AI goes off screen
+		if (enemy.body.x>=game.width){
+			enemy.kill();
+			this.life--;
+			backSound.stop();
+			collectSound.stop();
+			collideObstacleSound.stop();
+			negDropSound.stop();
+			posDropSound.stop();
+		}
+
 		//go to game over screen when player has no more lives (touches AI)
 		if (this.life < 1){
+			levelCounter.stop();
 			game.state.start('GameOver', true, false, this.score, this.life);
 		}
 	},
@@ -176,17 +197,56 @@ GameOver.prototype = {
 		this.life = life;
 	},
 	create: function() {
+		//play game over sound
+		enemySound.play();
 		//set bg to blue and print game over messages
 		game.stage.backgroundColor = '#4488AA';
 		printMessages('Game Over', 'Final Score: ' + this.score, 'Press [SPACE] to Retry');
 	},
 	update: function() {
+		
 		//go back to menu when spacebar is pressed
 		if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
 			game.state.start('MainMenu');
 		}
 	}
 }
+
+function levelBump() {
+		// increase object speed, increment level
+		level = level + 1;
+		objectSpeed= objectSpeed - 2;
+
+		// // show timer outside canvas
+		// document.getElementById('gameTitle').innerHTML = 'Galaxy Run! Score: ' + level + ' miles';
+
+		if(level%50 == 0) {
+		 	// increase audio rate at higher level
+			backSound._sound.playbackRate.value += 0.00020;
+
+		// 	// play level up sound
+		// 	//this.levelup.play('', 0, 0.75, false);
+
+		// 	// change border color
+		// 	let color = colors[colorIndex].toString(16);	// get color at index, convert to hex
+		// 	if(colorIndex < colors.length-1) {	// increment next index value
+		// 		colorIndex++; 
+		// 	} else { 
+		// 		colorIndex = 0;
+		// 	}
+		// 	document.getElementById('myGame').style.borderColor = '#' + color;	// change border
+		// 	document.getElementById('gameTitle').style.color = '#' + color;	// change title
+		}
+		// decrease player scale at level 50
+		if(level == 50) {
+			player.scale.setTo(0.8);
+		}
+
+		// make player smaller at higher level
+		if(level == 100) {
+			player.scale.setTo(0.7);
+		}
+	}
 
 function printMessages(top_msg, mid_msg, btm_msg) {
 	//print messages for main menu and gameover screens
@@ -240,23 +300,12 @@ function createObstacle(){
  	obstacle.kill();
  	this.score = this.score - 5;
  	scoreText.text = 'score: ' + this.score;
+ 	enemy.body.x = enemy.body.x + 50; //each time player hits obstacle, increase distance between player and enemy
  }
 
  function obstacleHittreat(obstacles, treats){
  	//destroy obstacle from screen
  	obstacles.kill();
- }
-
- function hitEnemy (player, enemy){ 
-	//kill enemy from screen, stop all sounds, and decrease player's life
-	enemySound.play();
-	backSound.stop();
-	collectSound.stop();
-	collideObstacleSound.stop();
-	negDropSound.stop();
-	posDropSound.stop();
-	enemy.kill();
-	this.life--; 
  }
 
 //add all game states to game and start game with main menu screen
