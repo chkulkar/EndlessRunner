@@ -18,9 +18,11 @@ var treats;
 var treat1;
 var treat2;
 var obstacles;
+var obstacle1;
 var stars;
 var star;
 var trash;
+var trash1;
 var objectSpeed = -170;
 var cursors;
 var collectSound;
@@ -193,24 +195,6 @@ Play.prototype = {
 		player.animations.add('run', ['dog_1', 'dog_2','dog_3', 'dog_4', 'dog_5', 'dog_6'], 12, true);
 		player.animations.add('jump', ['dog_1'], 0, true);
 
-		//create timer to spawn obstacles repeatedly
-		game.time.events.repeat(Phaser.Timer.SECOND*3, 500, createObstacle, this);
-	
-		//add obstacles group
-		obstacles = game.add.group();
-		game.physics.enable(obstacles, Phaser.Physics.ARCADE);
-		obstacles.enableBody = true;
-
-		//create timer to spawn treats repeatedly
-		//game.time.events.repeat(Phaser.Timer.SECOND*(game.rnd.integerInRange(2,3)), 100, createTreat, this);
-		game.time.events.repeat(Phaser.Timer.SECOND*3, 500, createTreat, this);
-		//add treats group
-		treats = game.add.group();
-		treats.enableBody = true;
-
-		stars = game.add.group();
-		stars.enableBody = true;
-
 		var timer = game.time.create(false);
 
     	//  Set a TimerEvent to occur after 1 seconds
@@ -222,6 +206,32 @@ Play.prototype = {
         	this.score++;  //make the score goes up by time
         	scoreText.text = 'score: ' + this.score;
     	}
+    	//create timer to spawn obstacles 
+		
+		this.dropObstacleTimer = timer.loop(0, createObstacle, this);
+		//add obstacles group
+		obstacles = game.add.group();
+		game.physics.enable(obstacles, Phaser.Physics.ARCADE);
+		obstacles.enableBody = true;
+		obstacle1 = game.add.group();
+		obstacle1.enableBody = true;
+		game.physics.enable(obstacle1, Phaser.Physics.ARCADE);
+
+		//create timer to spawn treats 
+		
+		
+		this.dropTreatTimer = timer.loop(0, createTreat, this);
+		
+
+		//game.time.events.repeat(Phaser.Timer.SECOND*3, 500, createTreat, this);
+		//add treats group
+		treats = game.add.group();
+		treats.enableBody = true;
+
+		stars = game.add.group();
+		stars.enableBody = true;
+
+		
     	    // add rain to the game to make it interesting
     	rains = game.add.group();
     	rains.enableBody = true;
@@ -315,7 +325,10 @@ Play.prototype = {
 		// if(enemy.body.x==trash.body.x){
 		// 	trash.kill();
 		// }
-
+		
+		//Make the drop timer delay randomly
+		this.dropTreatTimer.delay = game.rnd.integerInRange(3000,9000);
+		this.dropObstacleTimer.delay = game.rnd.integerInRange(2000,5000);
 
 		//go to game over screen if AI goes off screen
 		if (enemy.body.x>=game.width){
@@ -447,6 +460,7 @@ function collectTreat (player, treat){
 function createTreat(){
 	//play positive sound when treat is dropped
 	posDropSound.play();
+
 	//spawn treat at random location
 	for (var i=0; i< Math.random(); i++){
 		//spawn diff treats randomly
@@ -459,8 +473,11 @@ function createTreat(){
 		treat2.body.velocity.x = objectSpeed;
 		treat2.body.gravity.y = 50;
 		treat2.body.bounce.y = 0.5 + Math.random() * 0.3;
+		
+
 
 	}
+
 }
 
 function createObstacle(){
@@ -499,7 +516,13 @@ function createBench(){
  	this.score = this.score - 5;
  	scoreText.text = 'score: ' + this.score;
  	enemy.body.x = enemy.body.x + 50; //each time player hits obstacle, increase distance between player and enemy
+
+ 	for (var i=0; i<Math.random(); i++){
+	trash1= obstacle1.create(player.body.x+50, this.game.height-70, 'obstacle1');
+    trash1.body.velocity.x = objectSpeed;
+	
  }
+}
 
 //add all game states to game and start game with main menu screen
 game.state.add('MainMenu', MainMenu);
