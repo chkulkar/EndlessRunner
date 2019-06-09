@@ -7,6 +7,7 @@
 var game = new Phaser.Game(900, 400, Phaser.AUTO, 'phaser');
 var scoreText;
 var levelCounter;
+var jumps=0;	
 var platforms;
 var benches;
 var fence;
@@ -41,6 +42,7 @@ var backSound;
 var endgame;
 var level;
 var background;
+var tree;
 var clouds;
 var cloud1;
 var cloud2;
@@ -72,6 +74,7 @@ MainMenu.prototype = {
 		game.load.image('trash','Trash.png');
 		game.load.atlasJSONHash('atlas1', 'AI.png', 'AI.json'); 
 		game.load.atlasJSONHash('atlas2', 'dog.png', 'dog.json');
+		game.load.atlasJSONHash('atlas3', 'tree.png', 'tree.json');
 		
 		// load audio assets
 		game.load.path = 'assets/audio/';
@@ -155,6 +158,11 @@ Play.prototype = {
 		game.physics.enable(clouds, Phaser.Physics.ARCADE);
 		clouds.enableBody = true;
 
+		tree = game.add.sprite(870, game.height-218, 'atlas3', 'tree1');
+		game.physics.arcade.enable(tree);
+		tree.enableBody = true;
+		tree.animations.add('stand',['tree1', 'tree2', 'tree3', 'tree4', 'tree5'], 3, true); //add tree animations
+
 		//add benches group
 		benches = game.add.group();
 		game.physics.arcade.enable(benches);
@@ -162,7 +170,6 @@ Play.prototype = {
 
 		//create timer to spawn bench every 20 seconds
 		game.time.events.repeat(Phaser.Timer.SECOND*20, 400, createBench, this);
-
 
 		//add game sounds and music
 		collectSound = game.add.audio('collectible');
@@ -193,7 +200,7 @@ Play.prototype = {
 	
 	
 		//create enemies at different locations and enable physics
-		enemy = game.add.sprite(350, game.height-168, 'atlas1', 'walk1');
+		enemy = game.add.sprite(350, game.height-170, 'atlas1', 'walk1');
 		game.physics.arcade.enable(enemy);
 		enemy.body.collideWorldBounds = false; 
 		enemy.animations.add('walk',['walk1', 'walk2', 'walk3', 'walk4'], 5, true); //create enemy left movement
@@ -210,7 +217,7 @@ Play.prototype = {
 		//create player animations and set speed of dog animations
 		player.animations.add('run', ['dog_1', 'dog_2','dog_3', 'dog_4', 'dog_5', 'dog_6'], 14, true);
 		player.animations.add('jump', ['dog_1'], 0, true);
-
+		this.jumping = false;
     	
     	//create timer to spawn obstacles 
 		this.dropObstacleTimer = timer.loop(0, createObstacle, this);
@@ -251,7 +258,21 @@ Play.prototype = {
 		scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000'});
 
 	},
+	upInputReleased: function(){
+ 		var release = false;
+   		release = this.input.keyboard.upDuration(Phaser.Keyboard.UP);
+    	release |= this.game.input.activePointer.justReleased();
+    	return release;
+ 	},
+
+ 	upInputIsActive: function(duration) {
+    	var isActive = false;
+    	isActive = this.input.keyboard.downDuration(Phaser.Keyboard.UP, duration);
+    	return isActive;
+	},
+
 	update: function() {	
+		game.world.wrap(tree);
 		//create collision variable for player and platform
 		var hitPlatform = game.physics.arcade.collide(player, platforms);
 
@@ -263,7 +284,8 @@ Play.prototype = {
 
 		//play enemy animations
 		enemy.animations.play('walk');
-		//player.animations.play('run');
+		tree.animations.play('stand');
+		tree.body.velocity.x = objectSpeed;
 
 		//enables Phaser Keyboard manager
 		cursors = game.input.keyboard.createCursorKeys();
@@ -271,19 +293,51 @@ Play.prototype = {
 		
 		if(player.body.touching.down && hitPlatform){
 			player.animations.play('run');
+			this.jumps = 2;
+			this.jumping= false;
+		}
+		if(this.jumps>0 && this.upInputIsActive(5)){
+			player.animations.play('jump');
+			jumpSound.play();
+			player.body.velocity.y = -400; 
+			this.jumping=true;
 		}
 
-		//allow player to jump when on ground
-		if (cursors.up.isDown && player.body.touching.down && hitPlatform){
-			player.animations.play('jump');
-			jumpSound.play();
-			player.body.velocity.y = -400;
+		if(this.jumping && this.upInputReleased()){
+			this.jumps--;
+			this.jumping = false;
 		}
-		if(cursors.up.isDown && !player.body.touching.down){
-			player.animations.play('jump');
-			jumpSound.play();
-			player.body.velocity.y = -400;  //HOW TO DO DOUBLE JUMP
-		}
+
+		
+	// 	//allow player to jump when on ground
+	// 	if (cursors.up.isDown && jumps==0 && player.body.touching.down){
+	// 			jumps=1;
+	// 			player.animations.play('jump');
+	// 			jumpSound.play();
+	// 			player.body.velocity.y = -400; }
+		
+	// 	if(cursors.up.isDown && jumps==1 && !player.body.touching.down){
+	// 			jumps=2;
+	// 			player.animations.play('jump');
+	// 			jumpSound.play();
+	// 			player.body.velocity.y = -500;  //HOW TO DO DOUBLE JUMP
+	// 		}
+	// 		// else {
+	// 		// 	jumps = 0;
+	// 		// }	
+	// //}
+	// jumps=0;
+		// //allow player to jump when on ground
+		// if (cursors.up.isDown && player.body.touching.down && hitPlatform){
+		// 	player.animations.play('jump');
+		// 	jumpSound.play();
+		// 	player.body.velocity.y = -400;
+		// }
+		// if(cursors.up.isDown && !player.body.touching.down){
+		// 	player.animations.play('jump');
+		// 	jumpSound.play();
+		// 	player.body.velocity.y = -400;  //HOW TO DO DOUBLE JUMP
+		// }
 
 		
 		//check for player collision with obstacle
@@ -378,7 +432,7 @@ function levelBump() {
 			backSound._sound.playbackRate.value += 0.020;
 		}
 
-		if(level==30){
+		if(level==30){ 
 			//create timer to drop second treat randomly
 			this.dropTreat2Timer = timer.loop(0, createTreat2, this);
 			this.dropTreat2Timer.delay = game.rnd.integerInRange(2000,9000);
@@ -474,7 +528,7 @@ function createTreat2(){
 function createObstacle(){
 	//spawn obstacle at random location
 	for (var i=0; i<Math.random(); i++){
-		trash = obstacles.create(game.world.width, this.game.height-85, "trash");
+		trash = obstacles.create(game.world.width, this.game.height-106, "trash");
 		trash.body.velocity.x = objectSpeed;
 	}
 }
@@ -494,7 +548,7 @@ function hitTrash(enemy, obstacle){
     collideObstacleSound.play();
 	//spawn spilled trash as if enemy kicked trash can
 	for (var i=0; i<Math.random(); i++){
-		trash1= spilledTrashes.create(enemy.body.x-10, this.game.height-70, 'spilledTrash');
+		trash1= spilledTrashes.create(enemy.body.x-10, this.game.height-90, 'spilledTrash');
     	trash1.body.velocity.x = objectSpeed;
    }
 }
