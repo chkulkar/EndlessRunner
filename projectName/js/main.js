@@ -6,16 +6,15 @@
 // define game and game variables
 var game = new Phaser.Game(900, 400, Phaser.AUTO, 'phaser');
 var scoreText;
-var levelCounter;
-var jumps=0;	
+var levelCounter;	
 var platforms;
 var benches;
-var fence;
 var rain;
 var rains;
 var player;
 var enemy;
 var timer;
+var timer2;
 var treats;
 var treat1;
 var treat2;
@@ -29,8 +28,6 @@ var stars;
 var star;
 var trash;
 var objectSpeed;
-var colors = [0x1BE7FF, 0x6EEB83, 0xE4FF1A, 0xE8AA14]; 
-var colorIndex = 0;
 var cursors;
 var collectSound;
 var collideObstacleSound;
@@ -38,17 +35,26 @@ var jumpSound;
 var posDropSound;
 var negCollideSound;
 var enemySound;
+var throwSound;
 var backSound;
 var endgame;
 var level;
 var background;
+var rainySky;
 var tree;
+var trees;
 var clouds;
 var cloud1;
 var cloud2;
 var cloud3;
 var cloud4;
 var cloud5;
+var rainClouds;
+var rainskies;
+var rainCloud1;
+var rainCloud2;
+var rainCloud3;
+
 // define MainMenu state and methods
 var MainMenu = function(game) {};
 MainMenu.prototype = {
@@ -56,13 +62,18 @@ MainMenu.prototype = {
 		preload: function() {
 		game.load.path = 'assets/img/'; 
 		game.load.image('sky', 'Sky.png');
+		game.load.image('rainySky', 'rainySky.png');
 		game.load.image('rain', 'rain.png'); 
 		game.load.image('cloud1','Cloud1.png');
 		game.load.image('cloud2','Cloud2.png');
 		game.load.image('cloud3','Cloud3.png');
 		game.load.image('cloud4','Cloud4.png');
 		game.load.image('cloud5','Cloud5.png');
-		game.load.image('star','star.png');
+		game.load.image('Raincloud1','Raincloud1.png');
+		game.load.image('Raincloud2','Raincloud2.png');
+		game.load.image('Raincloud3','Raincloud3.png');
+		game.load.image('splash', 'Splash.png');
+		game.load.image('star','star.png'); //star from Nathan Altice's CMPM120 class examples
 		game.load.image('bench','Bench.png');
 		game.load.image('fence','Fence.png');
 		game.load.image('ground', 'Ground.png');
@@ -75,6 +86,8 @@ MainMenu.prototype = {
 		game.load.atlasJSONHash('atlas1', 'AI.png', 'AI.json'); 
 		game.load.atlasJSONHash('atlas2', 'dog.png', 'dog.json');
 		game.load.atlasJSONHash('atlas3', 'tree.png', 'tree.json');
+		game.load.image('dog', 'dogCopy.png');
+		game.load.image('AI', 'AICopy.png');
 		
 		// load audio assets
 		game.load.path = 'assets/audio/';
@@ -86,18 +99,28 @@ MainMenu.prototype = {
 		game.load.audio('jumpSound', ['jump.mp3']); //jump sound from https://www.bensound.com
 		game.load.audio('die', ['die.mp3']); //death sound
 		game.load.audio('endgame', ['endgame.mp3']);//game over music from OpenGameArt.org by Machine
+		game.load.audio('throw', ['throw.wav']); //throwing sound from OpenGameArt.org by copyc4t
 	},
 	init: function() {
 		this.score = 0; // tracks the player's score
 		this.life = 1;	// tracks the player's life
 	},
 	create: function() {
-		// set bg color to blue
-		game.stage.backgroundColor = '#E8AA14';
-		var treat = game.add.sprite(655, 250, 'treat1');
-		var treat2 = game.add.sprite(690, 250, 'treat2');
-		var obs = game.add.sprite(820, 240, 'spilledTrash');
-		printMessages('Dog Chase!', 'You are a dog who needs training. Use UP key to jump! Collect                 and avoid      ','Hit too many obstacles and the trainer will leave you for good. Press [Space] to begin.');
+		//make menu screen
+		var screen = game.add.sprite(0,0,'sky');
+		screen.scale.setTo(20,20);
+		var Cloud = game.add.sprite(180, 80, 'cloud1');
+		var Cloud2 = game.add.sprite(580, 320, 'cloud2');
+		var treat = game.add.sprite(578, 250, 'treat1');
+		var treat2 = game.add.sprite(615, 247, 'treat2');
+		var obs = game.add.sprite(740, 240, 'spilledTrash');
+		var obs2 =game.add.sprite(805, 240, 'obstacle2');
+		var dog = game.add.sprite(200, 160, 'dog');
+		var AI = game.add.sprite(590, 115, 'AI');
+		var str = game.add.sprite(40, 245, 'star');
+		var str2 = game.add.sprite(180, 283, 'star');
+		var str4 = game.add.sprite(336, 320, 'star');
+		printMessages('Dog Chase!', 'You are a dog who needs training. Use UP key to jump! Collect                  and avoid      ','Hit too many obstacles and the trainer will leave you for good.','Press [Space] to begin.', 'Tip: Press UP twice to double jump!');
 
 	},
 	update: function(){
@@ -132,8 +155,8 @@ Play.prototype = {
 		game.physics.startSystem(Phaser.Physics.ARCADE);
 
 		//add game background
-		background = game.add.sprite(0,0,'sky');
-		background.scale.setTo(20,20);
+		this.background = this.game.add.sprite(0,0,'sky');
+		this.background.scale.setTo(20,20);
 
 		//create timer
 		timer = game.time.create(false);
@@ -148,20 +171,32 @@ Play.prototype = {
         	scoreText.text = 'score: ' + this.score;
     	}
 
-    	//create cloud timers and clouds group
-    	this.cloudTimer1 = timer.loop(0, createCloud1, this);
-    	this.cloudTimer2 = timer.loop(0, createCloud2, this);
-    	this.cloudTimer3 = timer.loop(0, createCloud3, this);
-    	this.cloudTimer4 = timer.loop(0, createCloud4, this);
-    	this.cloudTimer5 = timer.loop(0, createCloud5, this);
+    	//create timer 2
+    	timer2 = game.time.create(false);
+    	timer2.start();
+
+    	//create cloud timers and clouds groups
+    	this.cloudTimer1 = timer2.loop(0, createCloud1, this);
+    	this.cloudTimer2 = timer2.loop(0, createCloud2, this);
+    	this.cloudTimer3 = timer2.loop(0, createCloud3, this);
+    	this.cloudTimer4 = timer2.loop(0, createCloud4, this);
+    	this.cloudTimer5 = timer2.loop(0, createCloud5, this);
+    
     	clouds = game.add.group();
 		game.physics.enable(clouds, Phaser.Physics.ARCADE);
 		clouds.enableBody = true;
 
-		tree = game.add.sprite(870, game.height-218, 'atlas3', 'tree1');
-		game.physics.arcade.enable(tree);
-		tree.enableBody = true;
-		tree.animations.add('stand',['tree1', 'tree2', 'tree3', 'tree4', 'tree5'], 3, true); //add tree animations
+		rainClouds = game.add.group();
+		game.physics.enable(rainClouds, Phaser.Physics.ARCADE);
+		rainClouds.enableBody = true;
+
+		//add trees group
+		trees= game.add.group();
+		game.physics.enable(trees, Phaser.Physics.ARCADE);
+		trees.enableBody = true;
+
+		//create timer to spawn tree every 10 seconds
+		game.time.events.repeat(Phaser.Timer.SECOND*5, 400, createTree, this);
 
 		//add benches group
 		benches = game.add.group();
@@ -173,19 +208,20 @@ Play.prototype = {
 
 		//add game sounds and music
 		collectSound = game.add.audio('collectible');
+		collectSound.volume = 1.1;
 		collideObstacleSound = game.add.audio('collideObstacleSound');
-		collideObstacleSound.volume = 0.6;
+		collideObstacleSound.volume = 0.5;
 		jumpSound = game.add.audio('jumpSound');
-		jumpSound.volume = 0.6;
+		jumpSound.volume = 0.5;
 		posDropSound = game.add.audio('posDropSound');
-		posDropSound.volume = 0.8;
+		posDropSound.volume = 20;
 		negCollideSound = game.add.audio('negCollideSound');
-		negCollideSound.volume =1.3;
+		negCollideSound.volume =1.7;
 		enemySound = game.add.audio('die');
 		endgame = game.add.audio('endgame');
 		endgame.volume = 5;
 		backSound = game.add.audio('backMusic');
-		backSound.volume = 1.1;
+		backSound.volume = 0.8;
 		backSound.loop=true; //loop background music
 		backSound.play();
 
@@ -223,7 +259,7 @@ Play.prototype = {
 		this.dropObstacleTimer = timer.loop(0, createObstacle, this);
 		this.dropObstacle2Timer = timer.loop(0, createObstacle2, this);
 
-		//add obstacles group
+		//add obstacles groups
 		obstacles = game.add.group();
 		game.physics.enable(obstacles, Phaser.Physics.ARCADE);
 		obstacles.enableBody = true;
@@ -235,12 +271,10 @@ Play.prototype = {
 		spilledTrashes = game.add.group();
 		game.physics.enable(spilledTrashes, Phaser.Physics.ARCADE);
 		spilledTrashes.enableBody = true;
-	
 
 		//create timer to spawn treats 
 		this.dropTreatTimer = timer.loop(0, createTreat, this);
 
-		
 		//add treats group
 		treats = game.add.group();
 		treats.enableBody = true;
@@ -258,13 +292,14 @@ Play.prototype = {
 		scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000'});
 
 	},
+	//check if key is UP for double jump effect
 	upInputReleased: function(){
  		var release = false;
    		release = this.input.keyboard.upDuration(Phaser.Keyboard.UP);
     	release |= this.game.input.activePointer.justReleased();
     	return release;
  	},
-
+ 	//check if key is UP for double jump effect
  	upInputIsActive: function(duration) {
     	var isActive = false;
     	isActive = this.input.keyboard.downDuration(Phaser.Keyboard.UP, duration);
@@ -272,7 +307,9 @@ Play.prototype = {
 	},
 
 	update: function() {	
-		game.world.wrap(tree);
+		if(level==50){
+			this.background.loadTexture('rainySky');
+		}
 		//create collision variable for player and platform
 		var hitPlatform = game.physics.arcade.collide(player, platforms);
 
@@ -284,62 +321,30 @@ Play.prototype = {
 
 		//play enemy animations
 		enemy.animations.play('walk');
-		tree.animations.play('stand');
-		tree.body.velocity.x = objectSpeed;
+		// tree.animations.play('stand');
 
 		//enables Phaser Keyboard manager
 		cursors = game.input.keyboard.createCursorKeys();
 
-		
+		//play default running animation on ground
 		if(player.body.touching.down && hitPlatform){
 			player.animations.play('run');
 			this.jumps = 2;
 			this.jumping= false;
 		}
+		//measure # of jumps to create double jump effect
 		if(this.jumps>0 && this.upInputIsActive(5)){
 			player.animations.play('jump');
 			jumpSound.play();
 			player.body.velocity.y = -400; 
 			this.jumping=true;
 		}
-
+		//decrease number of jumps each time key is pressed
 		if(this.jumping && this.upInputReleased()){
 			this.jumps--;
 			this.jumping = false;
 		}
 
-		
-	// 	//allow player to jump when on ground
-	// 	if (cursors.up.isDown && jumps==0 && player.body.touching.down){
-	// 			jumps=1;
-	// 			player.animations.play('jump');
-	// 			jumpSound.play();
-	// 			player.body.velocity.y = -400; }
-		
-	// 	if(cursors.up.isDown && jumps==1 && !player.body.touching.down){
-	// 			jumps=2;
-	// 			player.animations.play('jump');
-	// 			jumpSound.play();
-	// 			player.body.velocity.y = -500;  //HOW TO DO DOUBLE JUMP
-	// 		}
-	// 		// else {
-	// 		// 	jumps = 0;
-	// 		// }	
-	// //}
-	// jumps=0;
-		// //allow player to jump when on ground
-		// if (cursors.up.isDown && player.body.touching.down && hitPlatform){
-		// 	player.animations.play('jump');
-		// 	jumpSound.play();
-		// 	player.body.velocity.y = -400;
-		// }
-		// if(cursors.up.isDown && !player.body.touching.down){
-		// 	player.animations.play('jump');
-		// 	jumpSound.play();
-		// 	player.body.velocity.y = -400;  //HOW TO DO DOUBLE JUMP
-		// }
-
-		
 		//check for player collision with obstacle
 		game.physics.arcade.overlap(player, spilledTrashes, hitObstacle, null, this);
 
@@ -352,15 +357,18 @@ Play.prototype = {
 		//check for player overlap with treat
 		game.physics.arcade.overlap(player, treats, collectTreat, null, this);
 
+		if(level<50){
 		//Make the timers delay randomly
 		this.cloudTimer1.delay = game.rnd.integerInRange(1000,7000);
     	this.cloudTimer2.delay = game.rnd.integerInRange(1000,7000);
     	this.cloudTimer3.delay = game.rnd.integerInRange(1000,7000);
     	this.cloudTimer4.delay = game.rnd.integerInRange(1000,7000);
     	this.cloudTimer5.delay = game.rnd.integerInRange(1000,7000);
+    }
+    	//add timer delay for treat and obstacles
 		this.dropTreatTimer.delay = game.rnd.integerInRange(1000,7000);
-		this.dropObstacleTimer.delay = game.rnd.integerInRange(2000,5000);
-		this.dropObstacle2Timer.delay = game.rnd.integerInRange(2000, 5000);
+		this.dropObstacleTimer.delay = game.rnd.integerInRange(4000,7000);
+		this.dropObstacle2Timer.delay = game.rnd.integerInRange(6000, 7000);
 
 		//go to game over screen if AI goes off screen
 		if (enemy.body.x>=game.width){
@@ -397,7 +405,7 @@ GameOver.prototype = {
 		endgame.play();
 		//set bg to blue and print game over messages
 		game.stage.backgroundColor = '#4488AA';
-		printMessages('Game Over', 'Final Score: ' + this.score, 'Press [SPACE] to Retry');
+		printMessages2('Game Over', 'Final Score: ' + this.score, 'Press [SPACE] to Retry');
 	},
 	update: function() {
 		//go back to menu when spacebar is pressed
@@ -413,71 +421,74 @@ function levelBump() {
 		level = level + 1;
 		objectSpeed= objectSpeed - 5;
 
-		if(level%5==0){
-			//play a level up sound! 
-
-			// scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000'});
-
-		// 	let color = colors[colorIndex].toString(16);	// get color at index, convert to hex
-		// 	if(colorIndex < colors.length-1) {	// increment next index value
-		// 		colorIndex++; 
-		// 	} else { 
-		// 		colorIndex = 0;
-		// 	}
-		// 	// document.getElementById('myGame').style.borderColor = '#' + color;	// change border
-		 }
-
 		if(level%50 == 0) {
 		 	// increase audio rate at higher level
-			backSound._sound.playbackRate.value += 0.020;
+			backSound._sound.playbackRate.value += 0.010;
 		}
 
-		if(level==30){ 
+		if(level==50){ 
 			//create timer to drop second treat randomly
 			this.dropTreat2Timer = timer.loop(0, createTreat2, this);
-			this.dropTreat2Timer.delay = game.rnd.integerInRange(2000,9000);
-			
+			this.dropTreat2Timer.delay = game.rnd.integerInRange(2000,7000);
+			//kill regular clouds
+			cloud1.kill();
+			cloud2.kill();
+			cloud3.kill();
+			cloud4.kill();
+			cloud5.kill();
+			timer2.pause();
+			//create rainy clouds
+			this.RainCloud1Timer = timer.loop(0, createRainCloud1, this);
+			this.RainCloud1Timer.delay = game.rnd.integerInRange(1000,2000);
+			this.RainCloud2Timer = timer.loop(0, createRainCloud2, this);
+			this.RainCloud2Timer.delay = game.rnd.integerInRange(1000,2000);
+			this.RainCloud3Timer = timer.loop(0, createRainCloud3, this);
+			this.RainCloud3Timer.delay = game.rnd.integerInRange(1000,2000);
 			//create rain effect
 			for (var y = 0; y < 30; y++){
         		for (var x = 0; x < 60; x++){
             		rain = rains.create( x * Math.random() *  50, y * Math.random() *  100, 'rain');
-            		rain.alpha = 0.3; 
-            		rain.scale.setTo(0.01);
+            		rain.alpha = 0.2; 
+            		rain.scale.setTo(0.5);
             		rain.checkWorldBounds = true;
             		rain.events.onOutOfBounds.add(rainOut, this);
             		rain.body.velocity.y = 50 + Math.random() * 200; //set rain speed
         		}
     		}
 		}
-		// // decrease player scale at level 50
-		// if(level == 50) {
-		// 	player.scale= player.scale - 10;
-		// }
-
-		// // make player smaller at higher level
-		// if(level == 100) {
-		// 	player.scale= player.scale-10;
-		// }
 	}
     	// function of rain go out
  		function rainOut(rain) {
-    	//  Move the rain to the top of the screen again
+    	// Move the rain to the top of the screen again
    		rain.reset(rain.x, 0);
 
-    	//  And give it a new random velocity
+    	// And give it a new random velocity
     	rain.body.velocity.y = 50 + Math.random() * 200;
 
 		}
 
-function printMessages(top_msg, mid_msg, btm_msg) {
-	//print messages for main menu and gameover screens
+function printMessages(top_msg, mid_msg, btm_msg, lst_msg, finl_msg) {
+	//print messages for main menu screen
 	let message = '';
-    let style1 = { font: '28px Helvetica', fill: '#FFF', align: "center" };
+    let style1 = { font: '40px Helvetica', fill: '#FFF', align: "center" };
     let style2 = { font: '18px Helvetica', fill: '#FFF', align: "center" };
-    let style3 = { font: '18px Helvetica', fill: '#FFF', align: "center" };
-	message = game.add.text(400, game.world.centerY-40, top_msg, style1);
-	message = game.add.text(150, game.world.centerY+48, mid_msg, style2);
-	message = game.add.text(150, game.world.centerY+86, btm_msg, style3);
+    let style3 = { font: '18px Helvetica', fill: 'black', align: "center" };
+    let style4 = { font: '18px Helvetica', fill: 'maroon', align: "center" };
+	message = game.add.text(355, game.world.centerY-100, top_msg, style1);
+	message = game.add.text(70, game.world.centerY+48, mid_msg, style2);
+	message = game.add.text(210, game.world.centerY+86, btm_msg, style2);
+	message = game.add.text(365, game.world.centerY+124, lst_msg, style3);
+	message = game.add.text(10, game.world.centerY+165,finl_msg, style4);
+}
+function printMessages2(top_msg, mid_msg, btm_msg) {
+	//print messages for game over screen
+	let message = '';
+    let style1 = { font: '40px Helvetica', fill: '#FFF', align: "center" };
+    let style2 = { font: '18px Helvetica', fill: '#FFF', align: "center" };
+    let style3 = { font: '18px Helvetica', fill: 'black', align: "center" };
+	message = game.add.text(355, game.world.centerY-100, top_msg, style1);
+	message = game.add.text(360, game.world.centerY+48, mid_msg, style2);
+	message = game.add.text(360, game.world.centerY+86, btm_msg, style2);
 }
 
 function collectTreat (player, treat){
@@ -509,7 +520,7 @@ function createTreat(){
 		treat1 = treats.create((enemy.body.x-10)-(Math.random()*100), this.game.height-100, 'treat1');
 		treat1.body.velocity.x = objectSpeed;
 		treat1.body.gravity.y = 50;
-		treat1.body.bounce.y = 0.5 + Math.random() * 0.3;
+		treat1.body.bounce.y = 0.9 + Math.random() * 0.3;
 	}
 }
 
@@ -535,9 +546,11 @@ function createObstacle(){
 function createObstacle2(){
 	//play negative sound when obstacle is dropped
     collideObstacleSound.play();
+    //spawn obstacle2 at random location
 	for (var i=0; i<Math.random(); i++){
 		obstacle2 = obstacles2.create((enemy.body.x-10)-(Math.random()*100), this.game.height-100, 'obstacle2');
 		obstacle2.body.velocity.x = objectSpeed;
+		
 	}
 }
 
@@ -553,8 +566,8 @@ function hitTrash(enemy, obstacle){
    }
 }
 
+//create bench
 function createBench(){
-	//create bench
 	var bench = benches.create(game.world.width, game.world.height-96, 'bench');
 	bench.body.velocity.x = objectSpeed;
 }
@@ -595,13 +608,42 @@ function createCloud5(){
 		cloud5.scale.setTo(game.rnd.integerInRange(0.5, 1));
 	}
 }
-
+//create rainy clouds
+function createRainCloud1(){
+		rainCloud1 = rainClouds.create(game.world.width, 0, 'Raincloud1');
+		rainCloud1 = rainClouds.create(game.world.width, 0, 'Raincloud1');
+		rainCloud1.body.velocity.x = objectSpeed;
+		rainCloud1.scale.setTo(5);
+		game.world.wrap(rainCloud1);
+}
+function createRainCloud2(){
+		rainCloud2 = rainClouds.create(game.world.width, 0, 'Raincloud2');
+		rainCloud2 = rainClouds.create(game.world.width, 0, 'Raincloud2');
+		rainCloud2.body.velocity.x = objectSpeed;
+		rainCloud2.scale.setTo(5);
+		game.world.wrap(rainCloud2);
+}
+function createRainCloud3(){
+		rainCloud3 = rainClouds.create(game.world.width, 0, 'Raincloud3');
+		rainCloud3 = rainClouds.create(game.world.width, 0, 'Raincloud3');
+		rainCloud3.body.velocity.x = objectSpeed;
+		rainCloud3.scale.setTo(5);
+		game.world.wrap(rainCloud3);
+	
+}
+function createTree(){
+	//spawn tree randomly
+	for (var i=0; i<Math.random(); i++){
+		tree = trees.create(870, game.height-218, 'atlas3', 'tree1');
+		tree.body.velocity.x = objectSpeed;
+		tree.animations.add('stand',['tree1', 'tree2', 'tree3', 'tree4', 'tree5'], 3, true); //add tree animations
+		tree.animations.play('stand');
+	}
+}
 function hitObstacle(player, spilled) {
  	//play collision sound when player hits obstacle
  	negCollideSound.play();
- 	// collideObstacleSound.play();
  	collectSound.stop();
-
  	//destroy spilled trash from screen and lower score
  	spilled.kill();
  	this.score = this.score - 5;
@@ -617,7 +659,6 @@ function hitObstacle(player, spilled) {
  	this.score = this.score - 5;
  	scoreText.text = 'score: ' + this.score;
  	enemy.body.x = enemy.body.x + 50; //each time player hits obstacle, increase distance between player and enemy
-
  }
 
 //add all game states to game and start game with main menu screen
