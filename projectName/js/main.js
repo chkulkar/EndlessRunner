@@ -72,10 +72,8 @@ MainMenu.prototype = {
 		game.load.image('Raincloud1','Raincloud1.png');
 		game.load.image('Raincloud2','Raincloud2.png');
 		game.load.image('Raincloud3','Raincloud3.png');
-		game.load.image('splash', 'Splash.png');
 		game.load.image('star','star.png'); //star from Nathan Altice's CMPM120 class examples
 		game.load.image('bench','Bench.png');
-		game.load.image('fence','Fence.png');
 		game.load.image('ground', 'Ground.png');
 		game.load.image('grass', 'Grass.png');
 		game.load.image('treat1','treat.png'); 
@@ -88,6 +86,7 @@ MainMenu.prototype = {
 		game.load.atlasJSONHash('atlas3', 'tree.png', 'tree.json');
 		game.load.image('dog', 'dogCopy.png');
 		game.load.image('AI', 'AICopy.png');
+		game.load.image('dogsad', 'saddog.png');
 		
 		// load audio assets
 		game.load.path = 'assets/audio/';
@@ -403,6 +402,8 @@ GameOver.prototype = {
 		enemySound.play();
 		//play game over music
 		endgame.play();
+		endgame.loop= true;
+		var dogSad = game.add.sprite(420, game.world.centerY+5, 'dogsad');
 		//set bg to blue and print game over messages
 		game.stage.backgroundColor = '#4488AA';
 		printMessages2('Game Over', 'Final Score: ' + this.score, 'Press [SPACE] to Retry');
@@ -484,11 +485,11 @@ function printMessages2(top_msg, mid_msg, btm_msg) {
 	//print messages for game over screen
 	let message = '';
     let style1 = { font: '40px Helvetica', fill: '#FFF', align: "center" };
-    let style2 = { font: '18px Helvetica', fill: '#FFF', align: "center" };
+    let style2 = { font: '20px Helvetica', fill: 'purple', align: "center" };
     let style3 = { font: '18px Helvetica', fill: 'black', align: "center" };
 	message = game.add.text(355, game.world.centerY-100, top_msg, style1);
-	message = game.add.text(360, game.world.centerY+48, mid_msg, style2);
-	message = game.add.text(360, game.world.centerY+86, btm_msg, style2);
+	message = game.add.text(400, game.world.centerY+80, mid_msg, style2);
+	message = game.add.text(370, game.world.centerY+124, btm_msg, style3);
 }
 
 function collectTreat (player, treat){
