@@ -488,7 +488,7 @@ function printMessages2(top_msg, mid_msg, btm_msg) {
     let style2 = { font: '20px Helvetica', fill: 'purple', align: "center" };
     let style3 = { font: '18px Helvetica', fill: 'black', align: "center" };
 	message = game.add.text(355, game.world.centerY-100, top_msg, style1);
-	message = game.add.text(400, game.world.centerY+80, mid_msg, style2);
+	message = game.add.text(395, game.world.centerY+80, mid_msg, style2);
 	message = game.add.text(370, game.world.centerY+124, btm_msg, style3);
 }
 
